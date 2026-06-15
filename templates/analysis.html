@@ -1,0 +1,727 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- 确保加载Font Awesome和Chart.js -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- 在head部分添加ECharts -->
+<script src="static/js/echarts.min.js"></script>
+
+<style>
+/* 基础样式 */
+.card {
+    background: #fff;
+    border: none;
+    margin-bottom: 24px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    border-radius: 10px;
+}
+
+.card-stats {
+    transition: transform 0.3s ease;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.card-stats:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.stats-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 24px;
+}
+
+.chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* 趋势指标样式 */
+.trend-indicator {
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 15px;
+    display: inline-block;
+    margin-top: 5px;
+}
+
+.trend-up {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4caf50;
+}
+
+.trend-down {
+    background: rgba(244, 67, 54, 0.1);
+    color: #f44336;
+}
+
+/* 商品列表样式 */
+.product-title {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+    position: relative;
+    padding: 2px 0;
+}
+
+.product-title:hover {
+    overflow: visible;
+    white-space: normal;
+    background-color: #fff;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin: -4px -8px;
+    position: absolute;
+}
+
+#topProductsList td {
+    vertical-align: middle;
+    padding: 12px 8px;
+    position: relative;
+}
+
+/* 排名徽章样式 */
+.badge.rounded-circle {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    line-height: 28px;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rank-1 {
+    background-color: #FFD700 !important;
+    color: #000 !important;
+}
+
+.rank-2 {
+    background-color: #C0C0C0 !important;
+    color: #000 !important;
+}
+
+.rank-3 {
+    background-color: #CD7F32 !important;
+    color: #fff !important;
+}
+
+.sales-amount {
+    font-weight: 600;
+    color: #2f4cdd;
+}
+
+.order-count {
+    font-weight: 600;
+    color: #40189d;
+}
+
+/* 响应式调整 */
+@media (max-width: 1200px) {
+    .product-title {
+        max-width: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .product-title {
+        max-width: 150px;
+    }
+    .chart-container {
+        height: 250px;
+    }
+}
+</style>
+
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row page-titles mx-0">
+        <div class="col-sm-6 p-md-0">
+            <div class="welcome-text">
+                <h4>数据分析</h4>
+                <span>销售与推广数据分析</span>
+            </div>
+        </div>
+        <div class="col-sm-6 p-md-0 justify-content-sm-end mt-2 mt-sm-0 d-flex">
+            <div class="form-group mb-0">
+                <input type="date" class="form-control" id="startDate">
+            </div>
+            <div class="mx-2 d-flex align-items-center">至</div>
+            <div class="form-group mb-0">
+                <input type="date" class="form-control" id="endDate">
+            </div>
+            <button class="btn btn-primary ml-2" onclick="refreshData()">
+                <i class="fa fa-refresh mr-1"></i>刷新
+            </button>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row">
+        <!-- 销售预测 -->
+        <div class="col-xl-3 col-lg-6 col-sm-6">
+            <div class="card card-stats">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stats-icon bg-warning">
+                            <i class="fa fa-chart-line"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h4 class="mb-0" id="forecastAmount">¥0</h4>
+                            <p class="mb-0">未来7天预测总计</p>
+                            <small class="trend-indicator" id="forecastTrend">
+                                <i class="fa fa-info-circle"></i> 置信度: 95%
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 订单总数 -->
+        <div class="col-xl-3 col-lg-6 col-sm-6">
+            <div class="card card-stats">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stats-icon bg-primary">
+                            <i class="fa fa-shopping-cart"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h4 class="mb-0" id="totalOrders">0</h4>
+                            <p class="mb-0">订单总数</p>
+                            <small class="trend-indicator trend-up" id="orderTrend">
+                                <i class="fa fa-arrow-up"></i> 0%
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 销售总额 -->
+        <div class="col-xl-3 col-lg-6 col-sm-6">
+            <div class="card card-stats">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stats-icon bg-success">
+                            <i class="fa fa-yen-sign"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h4 class="mb-0" id="totalSales">¥0</h4>
+                            <p class="mb-0">销售总额</p>
+                            <small class="trend-indicator trend-up" id="saleTrend">
+                                <i class="fa fa-arrow-up"></i> 0%
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 平均客单价 -->
+        <div class="col-xl-3 col-lg-6 col-sm-6">
+            <div class="card card-stats">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stats-icon bg-info">
+                            <i class="fa fa-chart-line"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h4 class="mb-0" id="avgOrderAmount">¥0</h4>
+                            <p class="mb-0">平均客单价</p>
+                            <small class="trend-indicator trend-up" id="avgOrderTrend">
+                                <i class="fa fa-arrow-up"></i> 0%
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图表区域 -->
+    <div class="row">
+        <!-- 销售趋势图 -->
+        <div class="col-xl-10">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">销售趋势</h4>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <div id="salesChart" style="width: 100%; height: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 销售预测图 -->
+        <div class="col-xl-10">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">未来7天趋势预测</h4>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <div id="forecastChart" style="width: 100%; height: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 定义全局变量
+let salesChart = null;
+
+// 页面加载完成后执行
+document.addEventListener('DOMContentLoaded', function() {
+    // 设置默认日期范围
+    const endDate = new Date('2024-09-30');
+    const startDate = new Date('2024-09-01');
+    
+    document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+    document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+    
+    // 初始化加载数据
+    refreshData();
+});
+
+// 更新销售趋势图
+function updateSalesChart(data) {
+    // 获取容器元素
+    const container = document.getElementById('salesChart');
+    if (!container) {
+        console.error('找不到图表容器');
+        return;
+    }
+
+    // 初始化图表
+    const salesChart = echarts.init(container);
+    
+    // 处理数据
+    const dates = data.map(item => item.date);
+    const amounts = data.map(item => item.total_amount);
+    const orders = data.map(item => item.order_count);
+
+    // 配置图表选项
+    const option = {
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'cross',
+                label: {
+                    backgroundColor: '#6a7985'
+                }
+            },
+            formatter: function(params) {
+                let result = params[0].name + '<br/>';
+                params.forEach(param => {
+                    let value = param.seriesName === '销售额' ? 
+                        '¥' + param.value.toLocaleString(undefined, {minimumFractionDigits: 2}) :
+                        param.value + ' 单';
+                    result += `${param.marker} ${param.seriesName}: ${value}<br/>`;
+                });
+                return result;
+            }
+        },
+        legend: {
+            data: ['销售额', '订单数']
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: dates,
+            axisLabel: {
+                rotate: 30,
+                interval: Math.floor(dates.length / 15)
+            }
+        },
+        yAxis: [
+            {
+                type: 'value',
+                name: '销售额(元)',
+                position: 'left',
+                axisLabel: {
+                    formatter: '¥{value}'
+                }
+            },
+            {
+                type: 'value',
+                name: '订单数',
+                position: 'right'
+            }
+        ],
+        series: [
+            {
+                name: '销售额',
+                type: 'line',
+                yAxisIndex: 0,
+                data: amounts,
+                smooth: true,
+                showSymbol: false,
+                lineStyle: {
+                    width: 3,
+                    color: '#2f4cdd'
+                },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        {
+                            offset: 0,
+                            color: 'rgba(47, 76, 221, 0.3)'
+                        },
+                        {
+                            offset: 1,
+                            color: 'rgba(47, 76, 221, 0.1)'
+                        }
+                    ])
+                }
+            },
+            {
+                name: '订单数',
+                type: 'line',
+                yAxisIndex: 1,
+                data: orders,
+                smooth: true,
+                showSymbol: false,
+                lineStyle: {
+                    width: 3,
+                    color: '#40189d'
+                },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        {
+                            offset: 0,
+                            color: 'rgba(64, 24, 157, 0.3)'
+                        },
+                        {
+                            offset: 1,
+                            color: 'rgba(64, 24, 157, 0.1)'
+                        }
+                    ])
+                }
+            }
+        ]
+    };
+
+    // 设置图表选项
+    salesChart.setOption(option);
+
+    // 添加窗口大小改变时的自适应
+    window.addEventListener('resize', function() {
+        salesChart.resize();
+    });
+}
+
+// 更新销售预测图表
+function updateSalesForecast(data) {
+    const container = document.getElementById('forecastChart');
+    if (!container) {
+        console.error('找不到预测图表容器');
+        return;
+    }
+
+    const forecastChart = echarts.init(container);
+    
+    const dates = data.map(item => item.date);
+    const predictions = data.map(item => item.predicted_amount);
+    const lowerBounds = data.map(item => item.lower_bound);
+    const upperBounds = data.map(item => item.upper_bound);
+
+    const option = {
+        title: {
+            text: '未来7天趋势预测',
+            left: 'center',
+            top: 10,
+            textStyle: {
+                fontSize: 16,
+                fontWeight: 'normal',
+                color: '#333'
+            }
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'cross',
+                label: {
+                    backgroundColor: '#6a7985'
+                }
+            },
+            formatter: function(params) {
+                const date = params[0].name;
+                const predicted = params[0].value.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+                const lower = params[1].value.toLocaleString();
+                const upper = params[2].value.toLocaleString();
+                
+                return `<div style="padding: 3px;">
+                    <div style="margin-bottom: 5px;"><b>${date}</b></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                        <span>预测销售额:</span>
+                        <span style="color:#2f4cdd;font-weight:bold;">¥${predicted}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span>预测区间:</span>
+                        <span style="color:#666;">¥${lower} ~ ¥${upper}</span>
+                    </div>
+                </div>`;
+            }
+        },
+        legend: {
+            data: ['预测销售额', '预测区间'],
+            top: 40
+        },
+        grid: {
+            top: 80,
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: dates,
+            axisLabel: {
+                rotate: 30,
+                formatter: '{value}',
+                color: '#666'
+            },
+            axisLine: {
+                lineStyle: {
+                    color: '#ddd'
+                }
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: '销售额(元)',
+            nameTextStyle: {
+                color: '#666'
+            },
+            axisLabel: {
+                formatter: '¥{value}',
+                color: '#666'
+            },
+            splitLine: {
+                lineStyle: {
+                    type: 'dashed',
+                    color: '#eee'
+                }
+            }
+        },
+        series: [
+            {
+                name: '预测销售额',
+                type: 'line',
+                data: predictions,
+                smooth: true,
+                symbol: 'circle',
+                symbolSize: 8,
+                lineStyle: {
+                    width: 3,
+                    color: '#2f4cdd'
+                },
+                itemStyle: {
+                    color: '#2f4cdd',
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                },
+                markPoint: {
+                    data: [
+                        {type: 'max', name: '最高预测'},
+                        {type: 'min', name: '最低预测'}
+                    ],
+                    label: {
+                        formatter: function(param) {
+                            return '¥' + param.value.toLocaleString();
+                        }
+                    }
+                },
+                markLine: {
+                    data: [
+                        {
+                            type: 'average',
+                            name: '平均值',
+                            label: {
+                                formatter: '平均: ¥{c}'
+                            }
+                        }
+                    ],
+                    lineStyle: {
+                        color: '#f0b90b',
+                        type: 'dashed'
+                    }
+                }
+            },
+            {
+                name: '预测区间',
+                type: 'line',
+                data: lowerBounds,
+                lineStyle: {opacity: 0},
+                stack: 'confidence-band',
+                symbol: 'none'
+            },
+            {
+                name: '预测区间',
+                type: 'line',
+                data: upperBounds,
+                lineStyle: {opacity: 0},
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        {
+                            offset: 0,
+                            color: 'rgba(47, 76, 221, 0.3)'
+                        },
+                        {
+                            offset: 1,
+                            color: 'rgba(47, 76, 221, 0.1)'
+                        }
+                    ])
+                },
+                stack: 'confidence-band',
+                symbol: 'none'
+            }
+        ]
+    };
+
+    forecastChart.setOption(option);
+    
+    // 添加窗口大小改变时的自适应
+    window.addEventListener('resize', function() {
+        forecastChart.resize();
+    });
+
+    // 更新预测卡片数据
+    if (data.length > 0) {
+        const tomorrow = data[0];
+        document.getElementById('forecastAmount').textContent = 
+            '¥' + tomorrow.predicted_amount.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+    }
+}
+
+// 更新订单统计数据
+function updateOrderStats(stats) {
+    const current = stats.current;
+    const last = stats.last;
+    
+    // 更新订单总数
+    document.getElementById('totalOrders').textContent = current.total_orders.toLocaleString();
+    updateTrend('orderTrend', current.total_orders, last.total_orders);
+    
+    // 更新销售总额
+    document.getElementById('totalSales').textContent = '¥' + current.total_amount.toLocaleString();
+    updateTrend('saleTrend', current.total_amount, last.total_amount);
+    
+    // 更新平均客单价
+    const avgOrder = current.total_amount / current.total_orders;
+    const lastAvgOrder = last.total_amount / last.total_orders;
+    document.getElementById('avgOrderAmount').textContent = '¥' + avgOrder.toFixed(2);
+    updateTrend('avgOrderTrend', avgOrder, lastAvgOrder);
+}
+
+// 修改刷新数据函数
+async function refreshData() {
+    try {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        if (!startDate || !endDate) {
+            alert('请选择日期范围');
+            return;
+        }
+
+        // 显示加载状态
+        const refreshBtn = document.querySelector('.btn-primary');
+        const refreshIcon = document.querySelector('.fa-refresh');
+        refreshBtn.disabled = true;
+        refreshIcon.classList.add('fa-spin');
+
+        // 获取销售趋势和预测数据
+        const [salesResponse, statsResponse, forecastResponse] = await Promise.all([
+            fetch(`/api/analysis/daily_sales?start_date=${startDate}&end_date=${endDate}`),
+            fetch(`/api/analysis/order_stats?start_date=${startDate}&end_date=${endDate}`),
+            fetch('/api/analysis/sales_forecast')
+        ]);
+
+        const [salesData, statsData, forecastData] = await Promise.all([
+            salesResponse.json(),
+            statsResponse.json(),
+            forecastResponse.json()
+        ]);
+
+        if (salesData.code === 200) {
+            updateSalesChart(salesData.data);
+        }
+        if (statsData.code === 200) {
+            updateOrderStats(statsData.data);
+        }
+        if (forecastData.code === 200) {
+            updateSalesForecast(forecastData.data);
+            // 更新预测卡片数据
+            if (forecastData.data.length > 0) {
+                const total = forecastData.data.reduce((sum, d) => sum + d.predicted_amount, 0);
+                document.getElementById('forecastAmount').textContent = 
+                    '¥' + total.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+            }
+        }
+
+    } catch (error) {
+        console.error('刷新数据失败:', error);
+        alert('刷新数据失败，请稍后重试');
+    } finally {
+        // 恢复按钮状态
+        const refreshBtn = document.querySelector('.btn-primary');
+        const refreshIcon = document.querySelector('.fa-refresh');
+        refreshBtn.disabled = false;
+        refreshIcon.classList.remove('fa-spin');
+    }
+}
+
+// 更新趋势指标
+function updateTrend(elementId, current, last) {
+    const growth = last ? ((current - last) / last * 100).toFixed(1) : 0;
+    const element = document.getElementById(elementId);
+    element.innerHTML = `<i class="fa fa-arrow-${growth >= 0 ? 'up' : 'down'}"></i> ${Math.abs(growth)}%`;
+    element.className = `trend-indicator trend-${growth >= 0 ? 'up' : 'down'}`;
+}
+
+// 添加日期选择事件监听
+document.getElementById('startDate').addEventListener('change', refreshData);
+document.getElementById('endDate').addEventListener('change', refreshData);
+</script>
+{% endblock %} 

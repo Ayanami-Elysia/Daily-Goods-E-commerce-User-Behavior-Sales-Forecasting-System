@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="form-head d-flex mb-0 mb-lg-4 align-items-start">
+        <div class="mr-auto d-none d-lg-block">
+            <h2 class="text-black font-w600 mb-1">日用品电商用户行为分析总览</h2>
+            <p class="mb-0">围绕用户活跃、订单趋势、品类偏好与营销转化进行综合洞察</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card overview-card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-xl-3 col-md-6 mb-3">
+                            <div class="metric-card">
+                                <span class="metric-label">累计用户数</span>
+                                <h3>12,860</h3>
+                                <p>近7日新增 826 人</p>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6 mb-3">
+                            <div class="metric-card">
+                                <span class="metric-label">累计订单量</span>
+                                <h3>38,420</h3>
+                                <p>本月订单环比 +14.6%</p>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6 mb-3">
+                            <div class="metric-card">
+                                <span class="metric-label">支付转化率</span>
+                                <h3>67.3%</h3>
+                                <p>加购到支付提升 4.2%</p>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6 mb-3">
+                            <div class="metric-card">
+                                <span class="metric-label">复购用户占比</span>
+                                <h3>41.8%</h3>
+                                <p>清洁与收纳类复购更高</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-8 col-lg-7 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">近7日访问与订单趋势</h4>
+                    <div id="trendChart" style="height: 340px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-lg-5 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">用户行为转化漏斗</h4>
+                    <div id="funnelChart" style="height: 340px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6 col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">热销日用品品类分布</h4>
+                    <div id="categoryChart" style="height: 320px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6 col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">用户消费偏好画像</h4>
+                    <div id="preferenceChart" style="height: 320px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-7 col-lg-7 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">营销渠道转化表现</h4>
+                    <div id="channelChart" style="height: 320px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-5 col-lg-5 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">用户地域活跃度</h4>
+                    <div id="regionChart" style="height: 320px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="static/js/echarts.min.js"></script>
+<style>
+.overview-card {
+    background: linear-gradient(135deg, #f8fbff 0%, #f5fcfb 100%);
+}
+.metric-card {
+    height: 100%;
+    padding: 22px 20px;
+    border-radius: 16px;
+    background: #ffffff;
+    border: 1px solid #e6eef7;
+    box-shadow: 0 10px 24px rgba(49, 96, 140, 0.06);
+}
+.metric-label {
+    display: inline-block;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #7a8da0;
+}
+.metric-card h3 {
+    margin-bottom: 8px;
+    color: #22384d;
+    font-size: 30px;
+    font-weight: 700;
+}
+.metric-card p {
+    margin-bottom: 0;
+    font-size: 13px;
+    color: #7f92a5;
+}
+</style>
+<script>
+const trendChart = echarts.init(document.getElementById('trendChart'));
+const funnelChart = echarts.init(document.getElementById('funnelChart'));
+const categoryChart = echarts.init(document.getElementById('categoryChart'));
+const preferenceChart = echarts.init(document.getElementById('preferenceChart'));
+const channelChart = echarts.init(document.getElementById('channelChart'));
+const regionChart = echarts.init(document.getElementById('regionChart'));
+
+trendChart.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['访问用户', '下单用户', '支付订单'], top: 0 },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+    },
+    yAxis: { type: 'value' },
+    series: [
+        {
+            name: '访问用户',
+            type: 'line',
+            smooth: true,
+            data: [1820, 1950, 2100, 2240, 2460, 2680, 2590],
+            itemStyle: { color: '#3b82f6' },
+            areaStyle: { color: 'rgba(59,130,246,0.12)' }
+        },
+        {
+            name: '下单用户',
+            type: 'line',
+            smooth: true,
+            data: [820, 910, 980, 1050, 1140, 1260, 1190],
+            itemStyle: { color: '#14b8a6' },
+            areaStyle: { color: 'rgba(20,184,166,0.10)' }
+        },
+        {
+            name: '支付订单',
+            type: 'line',
+            smooth: true,
+            data: [610, 690, 730, 810, 880, 940, 905],
+            itemStyle: { color: '#f59e0b' },
+            areaStyle: { color: 'rgba(245,158,11,0.10)' }
+        }
+    ]
+});
+
+funnelChart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
+    series: [{
+        type: 'funnel',
+        left: '10%',
+        top: 20,
+        bottom: 20,
+        width: '80%',
+        min: 0,
+        max: 100,
+        sort: 'descending',
+        gap: 4,
+        label: {
+            show: true,
+            position: 'inside',
+            formatter: '{b}\n{c}%'
+        },
+        itemStyle: {
+            borderColor: '#fff',
+            borderWidth: 2
+        },
+        data: [
+            { value: 100, name: '浏览首页', itemStyle: { color: '#60a5fa' } },
+            { value: 78, name: '查看商品', itemStyle: { color: '#34d399' } },
+            { value: 52, name: '加入购物车', itemStyle: { color: '#fbbf24' } },
+            { value: 41, name: '提交订单', itemStyle: { color: '#fb7185' } },
+            { value: 33, name: '完成支付', itemStyle: { color: '#a78bfa' } }
+        ]
+    }]
+});
+
+categoryChart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
+    legend: { bottom: 0 },
+    series: [{
+        name: '品类占比',
+        type: 'pie',
+        radius: ['42%', '72%'],
+        center: ['50%', '45%'],
+        itemStyle: {
+            borderRadius: 10,
+            borderColor: '#fff',
+            borderWidth: 2
+        },
+        label: { formatter: '{b}\n{d}%' },
+        data: [
+            { value: 28, name: '清洁用品', itemStyle: { color: '#3b82f6' } },
+            { value: 22, name: '纸品湿巾', itemStyle: { color: '#22c55e' } },
+            { value: 18, name: '厨房用品', itemStyle: { color: '#f59e0b' } },
+            { value: 16, name: '家居收纳', itemStyle: { color: '#8b5cf6' } },
+            { value: 16, name: '个护洗护', itemStyle: { color: '#ef4444' } }
+        ]
+    }]
+});
+
+preferenceChart.setOption({
+    tooltip: { trigger: 'axis' },
+    radar: {
+        radius: '65%',
+        splitNumber: 4,
+        axisName: { color: '#60758a' },
+        splitArea: {
+            areaStyle: {
+                color: ['rgba(59,130,246,0.03)', 'rgba(59,130,246,0.06)']
+            }
+        },
+        indicator: [
+            { name: '价格敏感度', max: 100 },
+            { name: '品牌忠诚度', max: 100 },
+            { name: '促销响应度', max: 100 },
+            { name: '复购意愿', max: 100 },
+            { name: '评价关注度', max: 100 },
+            { name: '配送时效关注', max: 100 }
+        ]
+    },
+    series: [{
+        type: 'radar',
+        data: [
+            {
+                value: [82, 58, 87, 74, 66, 79],
+                name: '核心用户画像',
+                areaStyle: { color: 'rgba(59,130,246,0.20)' },
+                lineStyle: { color: '#3b82f6' },
+                itemStyle: { color: '#3b82f6' }
+            }
+        ]
+    }]
+});
+
+channelChart.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { data: ['曝光量', '点击量', '成交量'] },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: {
+        type: 'category',
+        data: ['搜索推荐', '首页banner', '活动专区', '私域社群', '短视频渠道']
+    },
+    yAxis: { type: 'value' },
+    series: [
+        {
+            name: '曝光量',
+            type: 'bar',
+            barWidth: 18,
+            data: [9800, 8600, 7200, 5600, 6900],
+            itemStyle: { color: '#93c5fd' }
+        },
+        {
+            name: '点击量',
+            type: 'bar',
+            barWidth: 18,
+            data: [4200, 3980, 3310, 2510, 3180],
+            itemStyle: { color: '#38bdf8' }
+        },
+        {
+            name: '成交量',
+            type: 'bar',
+            barWidth: 18,
+            data: [1680, 1540, 1360, 1010, 1240],
+            itemStyle: { color: '#14b8a6' }
+        }
+    ]
+});
+
+regionChart.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'value' },
+    yAxis: {
+        type: 'category',
+        data: ['华东', '华南', '华中', '华北', '西南', '东北']
+    },
+    series: [{
+        type: 'bar',
+        data: [32, 26, 18, 14, 7, 3],
+        label: { show: true, position: 'right', formatter: '{c}%' },
+        itemStyle: {
+            color: {
+                type: 'linear',
+                x: 0,
+                y: 0,
+                x2: 1,
+                y2: 0,
+                colorStops: [
+                    { offset: 0, color: '#60a5fa' },
+                    { offset: 1, color: '#22c55e' }
+                ]
+            },
+            borderRadius: [0, 8, 8, 0]
+        }
+    }]
+});
+
+window.addEventListener('resize', function() {
+    trendChart.resize();
+    funnelChart.resize();
+    categoryChart.resize();
+    preferenceChart.resize();
+    channelChart.resize();
+    regionChart.resize();
+});
+</script>
+{% endblock %}

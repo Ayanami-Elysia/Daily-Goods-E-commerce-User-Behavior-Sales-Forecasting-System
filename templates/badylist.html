@@ -1,0 +1,541 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- 在现有内容前添加样式 -->
+<style>
+.pagination-circle .page-link {
+    width: 40px;
+    height: 40px;
+    line-height: 25px;
+    text-align: center;
+    border-radius: 50% !important;
+    padding: 0.5rem;
+    margin: 0 3px;
+    color: #7e7e7e;  /* 默认字体颜色 */
+}
+
+.pagination-circle .page-item.active .page-link {
+    background-color: #2f4cdd;
+    border-color: #2f4cdd;
+    color: #fff;    /* 激活状态的字体颜色 */
+}
+
+.pagination-circle .page-link:hover {
+    background-color: #eee;
+    border-color: #dee2e6;
+    color: #2f4cdd;  /* 悬停时的字体颜色 */
+}
+
+.pagination-circle .page-item.active .page-link:hover {
+    background-color: #2f4cdd;
+    color: white;
+}
+
+.pagination-circle .page-item.disabled .page-link {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    color: #b7b7b7;  /* 禁用状态的字体颜色 */
+    cursor: not-allowed;
+}
+
+.page-link:focus {
+    box-shadow: none;
+}
+
+/* 分页信息文本样式 */
+.pagination-info {
+    color: #7e7e7e;
+    font-size: 14px;
+}
+
+/* 分页按钮图标样式 */
+.page-link i {
+    font-size: 16px;
+    line-height: 1.2;
+}
+</style>
+
+<div class="container-fluid">
+    <div class="row page-titles mx-0">
+        <div class="col-sm-6 p-md-0">
+            <div class="welcome-text">
+                <h4>订单管理</h4>
+                <span>订单信息列表</span>
+            </div>
+        </div>
+        <div class="col-sm-6 p-md-0 justify-content-sm-end mt-2 mt-sm-0 d-flex">
+            <button class="btn btn-primary" onclick="showAddModal()">添加订单</button>
+        </div>
+    </div>
+
+    <!-- 搜索区域 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="form-row align-items-center">
+                        <div class="col-auto">
+                            <label class="sr-only" for="searchProductTitle">商品标题</label>
+                            <input type="text" class="form-control mb-2" id="searchProductTitle" placeholder="请输入商品标题">
+                        </div>
+                        <div class="col-auto">
+                            <label class="sr-only" for="searchStatus">订单状态</label>
+                            <select class="form-control mb-2" id="searchStatus">
+                                <option value="">全部状态</option>
+                                <option value="交易成功">交易成功</option>
+                                <option value="交易关闭">交易关闭</option>
+                                <option value="待付款">待付款</option>
+                                <option value="待发货">待发货</option>
+                                <option value="已发货">已发货</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-primary mb-2" onclick="searchOrders()">搜索</button>
+                            <button class="btn btn-secondary mb-2 ml-2" onclick="resetSearch()">重置</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <!-- 添加搜索结果统计区域 -->
+                    <div class="mt-3"></div>
+                    
+                    <div class="table-responsive">
+                        <table id="orderTable" class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>商品标题</th>
+                                    <th>店铺名称</th>
+                                    <th>总金额</th>
+                                    <th>实付金额</th>
+                                    <th>订单状态</th>
+                                    <th>创建时间</th>
+                                    <th>支付时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orderTableBody">
+                                <!-- 订单数据将通过JavaScript动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑订单模态框 -->
+<div class="modal fade" id="orderModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">添加订单</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="orderForm">
+                    <input type="hidden" id="orderId">
+                    <div class="row">
+                        <!-- 第一列 -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="productTitle">商品标题</label>
+                                <input type="text" class="form-control" id="productTitle" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="storeName">店铺名称</label>
+                                <input type="text" class="form-control" id="storeName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="orderStatus">订单状态</label>
+                                <select class="form-control" id="orderStatus" required>
+                                    <option value="交易成功">交易成功</option>
+                                    <option value="交易关闭">交易关闭</option>
+                                    <option value="待付款">待付款</option>
+                                    <option value="待发货">待发货</option>
+                                    <option value="已发货">已发货</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- 第二列 -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="totalAmount">总金额</label>
+                                <input type="number" class="form-control" id="totalAmount" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="actualPayment">实付金额</label>
+                                <input type="number" class="form-control" id="actualPayment" required>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveOrder()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let isEdit = false;
+let currentProductTitle = '';
+let currentStatus = '';
+let currentPage = 1;
+const pageSize = 10;
+
+// 页面加载完成后获取订单列表
+document.addEventListener('DOMContentLoaded', function() {
+    loadOrders(1);
+});
+
+// 搜索订单
+function searchOrders() {
+    currentProductTitle = document.getElementById('searchProductTitle').value.trim();
+    currentStatus = document.getElementById('searchStatus').value;
+    currentPage = 1; // 重置到第一页
+    loadOrders(currentPage);
+}
+
+// 重置搜索
+function resetSearch() {
+    document.getElementById('searchProductTitle').value = '';
+    document.getElementById('searchStatus').value = '';
+    currentProductTitle = '';
+    currentStatus = '';
+    currentPage = 1;
+    loadOrders(currentPage);
+}
+
+// 加载订单列表
+function loadOrders(page) {
+    currentPage = page;
+    // 构建查询参数
+    const params = {
+        product_title: currentProductTitle,
+        order_status: currentStatus,
+        page: currentPage,
+        page_size: pageSize
+    };
+
+    // 将参数转换为查询字符串
+    const queryString = Object.keys(params)
+        .filter(key => params[key] !== '') // 过滤掉空值，但保留0
+        .map(key => `${key}=${encodeURIComponent(params[key])}`)
+        .join('&');
+
+    fetch(`/api/orders?${queryString}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.code === 200) {
+                const tbody = document.getElementById('orderTableBody');
+                tbody.innerHTML = '';
+                if (!data.data.orders || data.data.orders.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="9" class="text-center">暂无数据</td>
+                        </tr>
+                    `;
+                } else {
+                    data.data.orders.forEach(order => {
+                        // 格式化日期时间
+                        const createTime = order.order_create_time ? new Date(order.order_create_time).toLocaleString() : '-';
+                        const paymentTime = order.order_payment_time ? new Date(order.order_payment_time).toLocaleString() : '-';
+                        
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${order.id}</td>
+                                <td>${order.product_title || '-'}</td>
+                                <td>${order.store_name || '-'}</td>
+                                <td>${order.total_amount ? '¥' + order.total_amount : '-'}</td>
+                                <td>${order.actual_payment ? '¥' + order.actual_payment : '-'}</td>
+                                <td>
+                                    <span class="badge badge-${getStatusBadgeClass(order.order_status)}">
+                                        ${order.order_status || '-'}
+                                    </span>
+                                </td>
+                                <td>${createTime}</td>
+                                <td>${paymentTime}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="editOrder(${order.id})">
+                                        <i class="fa fa-edit"></i> 编辑
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteOrder(${order.id})">
+                                        <i class="fa fa-trash"></i> 删除
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    // 生成分页
+                    generatePagination(data.data.total);
+                }
+
+                // 更新搜索结果统计
+                updateSearchStats(data.data.total);
+            } else {
+                alert('获取订单列表失败：' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('获取订单列表失败：' + error.message);
+        });
+}
+
+// 生成分页
+function generatePagination(total) {
+    const totalPages = Math.ceil(total / pageSize);
+    const pagination = document.createElement('nav');
+    pagination.className = 'mt-3';
+    
+    let paginationHtml = `
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="pagination-info">
+                显示 ${(currentPage - 1) * pageSize + 1} 到 ${Math.min(currentPage * pageSize, total)} 条，共 ${total} 条记录
+            </div>
+            <ul class="pagination pagination-circle pagination-md">
+    `;
+    
+    // 上一页
+    paginationHtml += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="javascript:void(0)" onclick="loadOrders(${currentPage - 1})">
+                <i class="fa fa-angle-left"></i>
+            </a>
+        </li>
+    `;
+
+    // 页码生成逻辑
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+
+    // 确保显示至少5个页码（如果有）
+    if (endPage - startPage < 4) {
+        if (currentPage < totalPages / 2) {
+            endPage = Math.min(startPage + 4, totalPages);
+        } else {
+            startPage = Math.max(endPage - 4, 1);
+        }
+    }
+
+    // 第一页
+    if (startPage > 1) {
+        paginationHtml += `
+            <li class="page-item">
+                <a class="page-link" href="javascript:void(0)" onclick="loadOrders(1)">1</a>
+            </li>
+        `;
+        if (startPage > 2) {
+            paginationHtml += `
+                <li class="page-item disabled">
+                    <a class="page-link">
+                        <i class="fa fa-ellipsis-h"></i>
+                    </a>
+                </li>
+            `;
+        }
+    }
+
+    // 中间页码
+    for (let i = startPage; i <= endPage; i++) {
+        paginationHtml += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="loadOrders(${i})">
+                    <span>${i}</span>
+                </a>
+            </li>
+        `;
+    }
+
+    // 最后页
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            paginationHtml += `
+                <li class="page-item disabled">
+                    <a class="page-link">
+                        <i class="fa fa-ellipsis-h"></i>
+                    </a>
+                </li>
+            `;
+        }
+        paginationHtml += `
+            <li class="page-item">
+                <a class="page-link" href="javascript:void(0)" onclick="loadOrders(${totalPages})">
+                    ${totalPages}
+                </a>
+            </li>
+        `;
+    }
+
+    // 下一页
+    paginationHtml += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="javascript:void(0)" onclick="loadOrders(${currentPage + 1})">
+                <i class="fa fa-angle-right"></i>
+            </a>
+        </li>
+    `;
+
+    paginationHtml += `
+            </ul>
+        </div>
+    `;
+    
+    pagination.innerHTML = paginationHtml;
+
+    // 替换或添加分页
+    const existingPagination = document.querySelector('nav.mt-3');
+    if (existingPagination) {
+        existingPagination.replaceWith(pagination);
+    } else {
+        document.querySelector('.table-responsive').after(pagination);
+    }
+}
+
+// 更新搜索结果统计
+function updateSearchStats(total) {
+    const statsDiv = document.createElement('div');
+    statsDiv.className = 'mt-3';
+    statsDiv.innerHTML = `
+        <p class="text-muted">
+            共找到 <span class="text-primary">${total}</span> 条记录
+            ${currentProductTitle ? `，商品标题包含："${currentProductTitle}"` : ''}
+            ${currentStatus ? `，状态为："${currentStatus}"` : ''}
+        </p>
+    `;
+
+    // 替换或添加统计信息
+    const existingStats = document.querySelector('.mt-3');
+    if (existingStats) {
+        existingStats.replaceWith(statsDiv);
+    } else {
+        document.querySelector('.table-responsive').before(statsDiv);
+    }
+}
+
+// 添加状态样式辅助函数
+function getStatusBadgeClass(status) {
+    switch(status) {
+        case '交易成功':
+            return 'success';
+        case '交易关闭':
+            return 'danger';
+        case '待付款':
+            return 'warning';
+        case '待发货':
+            return 'info';
+        case '已发货':
+            return 'primary';
+        default:
+            return 'secondary';
+    }
+}
+
+// 显示添加订单模态框
+function showAddModal() {
+    isEdit = false;
+    document.getElementById('modalTitle').textContent = '添加订单';
+    document.getElementById('orderForm').reset();
+    document.getElementById('orderId').value = '';
+    $('#orderModal').modal('show');
+}
+
+// 编辑订单
+function editOrder(id) {
+    isEdit = true;
+    document.getElementById('modalTitle').textContent = '编辑订单';
+    document.getElementById('orderId').value = id;
+    
+    fetch(`/api/orders/${id}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.code === 200) {
+            const order = data.data;
+            document.getElementById('productTitle').value = order.product_title || '';
+            document.getElementById('storeName').value = order.store_name || '';
+            document.getElementById('orderStatus').value = order.order_status || '';
+            document.getElementById('totalAmount').value = order.total_amount || '';
+            document.getElementById('actualPayment').value = order.actual_payment || '';
+            $('#orderModal').modal('show');
+        } else {
+            alert('获取订单信息失败：' + data.message);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// 保存订单
+function saveOrder() {
+    const orderId = document.getElementById('orderId').value;
+    const orderData = {
+        product_title: document.getElementById('productTitle').value,
+        store_name: document.getElementById('storeName').value,
+        order_status: document.getElementById('orderStatus').value,
+        total_amount: parseFloat(document.getElementById('totalAmount').value),
+        actual_payment: parseFloat(document.getElementById('actualPayment').value)
+    };
+    
+    if (isEdit) {
+        orderData.id = orderId;
+    }
+    
+    const method = isEdit ? 'PUT' : 'POST';
+    const url = isEdit ? `/api/orders/${orderId}` : '/api/orders';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(orderData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.code === 200) {
+            $('#orderModal').modal('hide');
+            loadOrders();
+            alert(isEdit ? '更新成功' : '添加成功');
+        } else {
+            alert((isEdit ? '更新' : '添加') + '失败：' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert((isEdit ? '更新' : '添加') + '失败：' + error.message);
+    });
+}
+
+// 删除订单
+function deleteOrder(id) {
+    if (confirm('确定要删除这个订单吗？')) {
+        fetch(`/api/orders/${id}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.code === 200) {
+                loadOrders();
+                alert('删除成功');
+            } else {
+                alert('删除失败：' + data.message);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+}
+</script>
+{% endblock %}
